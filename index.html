@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxi Noir — CTF Challenge</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚕</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+  :root{
+    --bg-deep:#08080f;
+    --bg-card:#0e0e1a;
+    --bg-card-hover:#111122;
+    --border:#1a1a30;
+    --border-glow:#2a2a55;
+    --text:#d8d8ee;
+    --text-dim:#6a6a8a;
+    --text-muted:#3a3a55;
+    --gold:#ffc823;
+    --gold-dim:#aa8800;
+    --cyan:#46d2ff;
+    --green:#46ff96;
+    --red:#ff4664;
+    --magenta:#be46ff;
+    --orange:#ff9e30;
+  }
+
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Outfit',sans-serif;
+    background:var(--bg-deep);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    line-height:1.6;
+  }
+
+  /* ── Ambient background ── */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 10%, rgba(255,200,35,.04) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 50% at 80% 80%, rgba(70,210,255,.03) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 50% 50%, rgba(190,70,255,.02) 0%, transparent 50%);
+  }
+
+  /* ── Scanline overlay ── */
+  body::after{
+    content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+    background:repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,.03) 2px,
+      rgba(0,0,0,.03) 4px
+    );
+  }
+
+  /* ── Noise texture ── */
+  .noise{
+    position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size:128px 128px;
+  }
+
+  .page{position:relative;z-index:2;max-width:780px;margin:0 auto;padding:2rem 1.5rem 4rem}
+
+  /* ── Hero ── */
+  .hero{text-align:center;padding:4rem 0 3rem;position:relative}
+  .hero-icon{
+    font-size:4.5rem;
+    filter:drop-shadow(0 0 30px rgba(255,200,35,.3));
+    animation:float 4s ease-in-out infinite;
+    display:inline-block;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0)}
+    50%{transform:translateY(-10px)}
+  }
+  .hero h1{
+    font-size:clamp(2.2rem,6vw,3.6rem);
+    font-weight:800;
+    letter-spacing:-.02em;
+    margin:.6rem 0 .3rem;
+    background:linear-gradient(135deg,var(--gold) 0%,var(--orange) 40%,var(--gold) 80%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    background-clip:text;
+    filter:drop-shadow(0 0 20px rgba(255,200,35,.15));
+  }
+  .hero .subtitle{
+    font-family:'JetBrains Mono',monospace;
+    font-size:.85rem;
+    color:var(--text-muted);
+    letter-spacing:.3em;
+    text-transform:uppercase;
+  }
+  .hero-line{
+    width:120px;height:1px;margin:1.8rem auto 0;
+    background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);
+  }
+
+  /* ── Section cards ── */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:2rem;
+    margin-bottom:1.5rem;
+    transition:border-color .3s,box-shadow .3s;
+    position:relative;
+    overflow:hidden;
+  }
+  .card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent 10%,var(--border-glow) 50%,transparent 90%);
+  }
+  .card:hover{border-color:var(--border-glow);box-shadow:0 4px 40px -10px rgba(70,210,255,.05)}
+
+  .card-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:.65rem;
+    letter-spacing:.2em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:1rem;
+    display:flex;align-items:center;gap:.5rem;
+  }
+  .card-label::before{
+    content:'';display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--cyan);box-shadow:0 0 8px var(--cyan);
+  }
+
+  h2{font-size:1.35rem;font-weight:700;margin-bottom:.8rem;color:var(--text)}
+  p{color:var(--text-dim);margin-bottom:.8rem;font-size:.95rem}
+  p:last-child{margin-bottom:0}
+
+  strong,.hl{color:var(--text)}
+  .hl-gold{color:var(--gold)}
+  .hl-cyan{color:var(--cyan)}
+  .hl-green{color:var(--green)}
+  .hl-red{color:var(--red)}
+
+  /* ── Code blocks ── */
+  code{
+    font-family:'JetBrains Mono',monospace;
+    font-size:.82rem;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.06);
+    border-radius:4px;
+    padding:.15em .4em;
+    color:var(--cyan);
+  }
+  pre{
+    background:#0a0a16;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:1.2rem 1.5rem;
+    overflow-x:auto;
+    margin:.8rem 0;
+    position:relative;
+  }
+  pre code{
+    background:none;border:none;padding:0;
+    color:var(--text-dim);font-size:.82rem;
+    line-height:1.7;
+  }
+  pre .cmd{color:var(--green)}
+  pre .comment{color:var(--text-muted);font-style:italic}
+
+  /* ── Rules list ── */
+  .rules{list-style:none;padding:0}
+  .rules li{
+    padding:.55rem 0 .55rem 1.6rem;
+    position:relative;
+    color:var(--text-dim);
+    font-size:.92rem;
+    border-bottom:1px solid rgba(255,255,255,.03);
+  }
+  .rules li:last-child{border-bottom:none}
+  .rules li::before{
+    content:'›';position:absolute;left:0;top:.55rem;
+    color:var(--gold);font-weight:700;font-size:1.1rem;
+  }
+
+  /* ── Download button ── */
+  .dl-wrap{text-align:center;margin:1.5rem 0 .5rem}
+  .dl-btn{
+    display:inline-flex;align-items:center;gap:.7rem;
+    padding:.9rem 2rem;
+    background:linear-gradient(135deg,rgba(255,200,35,.1),rgba(255,200,35,.05));
+    border:1px solid var(--gold-dim);
+    border-radius:8px;
+    color:var(--gold);
+    font-family:'JetBrains Mono',monospace;
+    font-size:.9rem;font-weight:600;
+    text-decoration:none;
+    transition:all .25s;
+    position:relative;
+    overflow:hidden;
+  }
+  .dl-btn::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(255,200,35,.08),transparent);
+    opacity:0;transition:opacity .25s;
+  }
+  .dl-btn:hover{
+    border-color:var(--gold);
+    box-shadow:0 0 25px -5px rgba(255,200,35,.2);
+    transform:translateY(-1px);
+  }
+  .dl-btn:hover::before{opacity:1}
+  .dl-btn svg{width:20px;height:20px;flex-shrink:0}
+  .dl-meta{
+    text-align:center;font-family:'JetBrains Mono',monospace;
+    font-size:.7rem;color:var(--text-muted);margin-top:.6rem;
+  }
+
+  /* ── Submission form ── */
+  .submit-area{margin-top:1.5rem}
+  .input-wrap{
+    display:flex;gap:.6rem;
+    flex-wrap:wrap;
+  }
+  .flag-input{
+    flex:1;min-width:200px;
+    padding:.8rem 1rem;
+    background:#0a0a16;
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    font-family:'JetBrains Mono',monospace;
+    font-size:.9rem;
+    outline:none;
+    transition:border-color .25s,box-shadow .25s;
+  }
+  .flag-input::placeholder{color:var(--text-muted)}
+  .flag-input:focus{
+    border-color:var(--cyan);
+    box-shadow:0 0 0 3px rgba(70,210,255,.1);
+  }
+  .submit-btn{
+    padding:.8rem 1.6rem;
+    background:linear-gradient(135deg,rgba(70,210,255,.12),rgba(70,210,255,.06));
+    border:1px solid rgba(70,210,255,.3);
+    border-radius:8px;
+    color:var(--cyan);
+    font-family:'JetBrains Mono',monospace;
+    font-size:.85rem;font-weight:600;
+    cursor:pointer;
+    transition:all .25s;
+    white-space:nowrap;
+  }
+  .submit-btn:hover{
+    background:linear-gradient(135deg,rgba(70,210,255,.18),rgba(70,210,255,.1));
+    border-color:var(--cyan);
+    box-shadow:0 0 20px -5px rgba(70,210,255,.2);
+    transform:translateY(-1px);
+  }
+
+  /* ── Result feedback ── */
+  .result{
+    margin-top:1rem;
+    padding:1rem 1.2rem;
+    border-radius:8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:.85rem;
+    display:none;
+    animation:fadeSlide .35s ease-out;
+    position:relative;
+    overflow:hidden;
+  }
+  @keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  .result.show{display:flex;align-items:center;gap:.8rem}
+  .result-icon{font-size:1.5rem;flex-shrink:0}
+
+  .result.success{
+    background:rgba(70,255,150,.06);
+    border:1px solid rgba(70,255,150,.2);
+    color:var(--green);
+  }
+  .result.success::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(ellipse at 20% 50%,rgba(70,255,150,.06),transparent 60%);
+  }
+  .result.fail{
+    background:rgba(255,70,100,.06);
+    border:1px solid rgba(255,70,100,.2);
+    color:var(--red);
+  }
+  .result.decoy{
+    background:rgba(255,158,48,.06);
+    border:1px solid rgba(255,158,48,.2);
+    color:var(--orange);
+  }
+
+  /* ── Hints ── */
+  .hints{margin-top:1rem}
+  details{
+    border:1px solid var(--border);
+    border-radius:8px;
+    margin-bottom:.5rem;
+    background:rgba(255,255,255,.01);
+    transition:border-color .25s;
+  }
+  details:hover{border-color:var(--border-glow)}
+  details[open]{border-color:var(--border-glow)}
+  summary{
+    padding:.7rem 1rem;
+    cursor:pointer;
+    font-family:'JetBrains Mono',monospace;
+    font-size:.8rem;
+    color:var(--text-muted);
+    transition:color .2s;
+    list-style:none;
+    display:flex;align-items:center;gap:.5rem;
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::before{
+    content:'▸';transition:transform .2s;display:inline-block;
+    color:var(--magenta);font-size:.9rem;
+  }
+  details[open] summary::before{transform:rotate(90deg)}
+  summary:hover{color:var(--text-dim)}
+  .hint-body{
+    padding:.3rem 1rem .9rem 1.8rem;
+    font-size:.85rem;color:var(--text-dim);
+    line-height:1.6;
+  }
+
+  /* ── Footer ── */
+  .footer{
+    text-align:center;
+    padding:3rem 0 1rem;
+    color:var(--text-muted);
+    font-size:.75rem;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .footer-line{
+    width:60px;height:1px;margin:0 auto 1rem;
+    background:linear-gradient(90deg,transparent,var(--border-glow),transparent);
+  }
+
+  /* ── Responsive ── */
+  @media(max-width:600px){
+    .page{padding:1.2rem 1rem 3rem}
+    .hero{padding:2.5rem 0 2rem}
+    .card{padding:1.4rem}
+    .input-wrap{flex-direction:column}
+    .submit-btn{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-icon">🚖</div>
+    <h1>Taxi Noir</h1>
+    <div class="subtitle">Reverse Engineering Challenge</div>
+    <div class="hero-line"></div>
+  </div>
+
+  <!-- Description -->
+  <div class="card">
+    <div class="card-label">Mission Briefing</div>
+    <p>
+      A local taxi company deployed a fancy new terminal-based dispatch system.
+      Rumor has it the developer hid something in the binary — a secret flag
+      that only reveals itself to those who <strong>truly understand</strong> the machine.
+    </p>
+    <p>Your job: <span class="hl-gold">find the flag.</span></p>
+    <p>Format: <code>CTF{...}</code></p>
+  </div>
+
+  <!-- Rules -->
+  <div class="card">
+    <div class="card-label">Rules</div>
+    <ul class="rules">
+      <li>The binary is a <strong>Linux x86_64 ELF</strong> — runs in any modern terminal (needs 80×24 minimum).</li>
+      <li>You may use any tools: <code>strings</code>, <code>objdump</code>, <code>ghidra</code>, <code>radare2</code>, <code>gdb</code>, <code>ltrace</code>, <code>strace</code>, etc.</li>
+      <li>The flag is <span class="hl-red">not</span> any of the obvious strings you'll find. <strong>Don't submit decoys.</strong></li>
+      <li>The real flag is <strong>constructed at runtime</strong> through obfuscation. Reverse the logic.</li>
+    </ul>
+  </div>
+
+  <!-- Download -->
+  <div class="card">
+    <div class="card-label">Download</div>
+    <p>Grab the binary, give it execute permission, and start exploring.</p>
+    <pre><code><span class="cmd">chmod +x</span> taxi-ctf
+<span class="cmd">./taxi-ctf</span></code></pre>
+    <p style="margin-top:.8rem">
+      The program is a working taxi simulator. Use <code>↑↓</code> to select stations,
+      <code>Enter</code> to dispatch. But there's more to it than meets the eye…
+    </p>
+    <div class="dl-wrap">
+      <a href="taxi-ctf" download class="dl-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        taxi-ctf
+      </a>
+    </div>
+    <div class="dl-meta">Linux x86_64 ELF · 695 KB · stripped</div>
+  </div>
+
+  <!-- Hints -->
+  <div class="card">
+    <div class="card-label">Hints</div>
+    <p style="margin-bottom:1rem">Stuck? Each hint costs imaginary points. Open wisely.</p>
+    <div class="hints">
+      <details>
+        <summary>Hint 1 — free</summary>
+        <div class="hint-body">
+          <code>strings</code> will show you several flags. <strong>None of them are correct.</strong> They're decoys.
+        </div>
+      </details>
+      <details>
+        <summary>Hint 2 — −50 pts</summary>
+        <div class="hint-body">
+          The binary stores encrypted data in static byte arrays. Look for arrays of seemingly random bytes that are <em>not</em> printable ASCII.
+        </div>
+      </details>
+      <details>
+        <summary>Hint 3 — −100 pts</summary>
+        <div class="hint-body">
+          There is a hidden keyboard trigger — a 4-character sequence. The check uses XOR with <code>0xAA</code> against a stored comparison table. What 4-char input, XOR'd with <code>0xAA</code>, yields <code>[0xDD, 0xC2, 0xCC, 0xCC]</code>?
+        </div>
+      </details>
+      <details>
+        <summary>Hint 4 — −150 pts</summary>
+        <div class="hint-body">
+          The flag is XOR-encrypted, and its bytes are <strong>shuffled</strong> using a permutation table before storage. You need to: (1) unshuffle using the permutation, (2) XOR-decrypt with the key. Both the permutation and the key are stored as static byte arrays in the binary.
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div class="card" id="submit-card">
+    <div class="card-label">Submit Flag</div>
+    <p>Found something? Paste your flag below.</p>
+    <div class="submit-area">
+      <div class="input-wrap">
+        <input
+          type="text"
+          class="flag-input"
+          id="flag-input"
+          placeholder="CTF{...}"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button class="submit-btn" id="submit-btn">Verify</button>
+      </div>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-line"></div>
+    Good luck. The meter is running. 🚕
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // SHA-256 of the correct flag — the flag itself is never present in this page.
+  const H='2bd91e91ebfd313bad77b0943090e0a041ff99381b9956d88d48441f776dc4b6';
+
+  // Known decoy hashes (to give a special message)
+  const DECOYS=[
+    'CTF{n0t_th3_fl4g}','FLAG{try_harder}','FLAG{d3c0y_0n3}','CTF{r3vers3_m3}'
+  ];
+
+  async function sha256(s){
+    const d=new TextEncoder().encode(s);
+    const h=await crypto.subtle.digest('SHA-256',d);
+    return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const input=document.getElementById('flag-input');
+  const btn=document.getElementById('submit-btn');
+  const res=document.getElementById('result');
+
+  async function check(){
+    const v=input.value.trim();
+    if(!v){input.focus();return}
+
+    // Show checking state
+    btn.textContent='Checking…';
+    btn.style.pointerEvents='none';
+
+    // Small delay for dramatic effect
+    await new Promise(r=>setTimeout(r,400));
+
+    const hash=await sha256(v);
+
+    res.className='result show';
+
+    if(hash===H){
+      res.className+=' success';
+      res.innerHTML='<span class="result-icon">🏁</span><div><strong>Correct!</strong><br>You cracked Taxi Noir. Well done, reverser.</div>';
+      input.style.borderColor='var(--green)';
+      input.style.boxShadow='0 0 0 3px rgba(70,255,150,.12)';
+    }else if(DECOYS.includes(v)){
+      res.className+=' decoy';
+      res.innerHTML='<span class="result-icon">🪤</span><div><strong>Nice try — that\'s a decoy.</strong><br>The developer planted fake flags to throw you off. Keep digging.</div>';
+      input.style.borderColor='var(--orange)';
+      input.style.boxShadow='0 0 0 3px rgba(255,158,48,.12)';
+    }else{
+      res.className+=' fail';
+      res.innerHTML='<span class="result-icon">✗</span><div><strong>Incorrect.</strong><br>That\'s not the flag. Try again.</div>';
+      input.style.borderColor='var(--red)';
+      input.style.boxShadow='0 0 0 3px rgba(255,70,100,.12)';
+    }
+
+    btn.textContent='Verify';
+    btn.style.pointerEvents='';
+  }
+
+  btn.addEventListener('click',check);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')check()});
+
+  // Reset styling on new input
+  input.addEventListener('input',()=>{
+    input.style.borderColor='';
+    input.style.boxShadow='';
+    if(res.classList.contains('show')){
+      res.className='result';
+    }
+  });
+})();
+</script>
+</body>
+</html>
